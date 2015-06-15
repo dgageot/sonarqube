@@ -84,6 +84,7 @@ public class IssueQuery {
   private final String sort;
   private final Boolean asc;
   private final Boolean ignorePaging;
+  private final String facetMode;
 
   private final String userLogin;
   private final Set<String> userGroups;
@@ -123,6 +124,7 @@ public class IssueQuery {
     this.userLogin = builder.userLogin;
     this.userGroups = builder.userGroups;
     this.checkAuthorization = builder.checkAuthorization;
+    this.facetMode = builder.facetMode;
   }
 
   public Collection<String> issueKeys() {
@@ -276,6 +278,10 @@ public class IssueQuery {
     return checkAuthorization;
   }
 
+  public String facetMode() {
+    return facetMode;
+  }
+
   @Override
   public String toString() {
     return ReflectionToStringBuilder.toString(this);
@@ -319,6 +325,7 @@ public class IssueQuery {
     private String userLogin;
     private Set<String> userGroups;
     private boolean checkAuthorization = true;
+    private String facetMode;
 
     private Builder(UserSession userSession) {
       this.userLogin = userSession.getLogin();
@@ -531,6 +538,10 @@ public class IssueQuery {
       return this;
     }
 
+    public Builder facetMode(String facetMode) {
+      this.facetMode = facetMode;
+      return this;
+    }
   }
 
   private static <T> Collection<T> defaultCollection(@Nullable Collection<T> c) {

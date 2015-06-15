@@ -30,13 +30,20 @@ import com.google.common.collect.Collections2;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.ObjectUtils;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISOPeriodFormat;
-import org.sonar.api.server.ServerSide;
 import org.sonar.api.resources.Qualifiers;
 import org.sonar.api.rule.RuleKey;
+import org.sonar.api.server.ServerSide;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.api.utils.System2;
@@ -48,15 +55,6 @@ import org.sonar.server.db.DbClient;
 import org.sonar.server.issue.filter.IssueFilterParameters;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.util.RubyUtils;
-
-import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
-
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import static com.google.common.collect.Lists.newArrayList;
 
@@ -138,6 +136,12 @@ public class IssueQueryService {
       if (!Strings.isNullOrEmpty(ignorePaging)) {
         builder.ignorePaging(RubyUtils.toBoolean(ignorePaging));
       }
+      String facetMode = (String) params.get(IssueFilterParameters.FACET_MODE);
+      if (!Strings.isNullOrEmpty(facetMode)) {
+        builder.facetMode(facetMode);
+      } else {
+        builder.facetMode(IssueFilterParameters.FACET_MODE_COUNT);
+      }
       return builder.build();
 
     } finally {
@@ -175,7 +179,8 @@ public class IssueQueryService {
         .createdAt(request.paramAsDateTime(IssueFilterParameters.CREATED_AT))
         .createdAfter(buildCreatedAfter(request.paramAsDateTime(IssueFilterParameters.CREATED_AFTER), request.param(IssueFilterParameters.CREATED_IN_LAST)))
         .createdBefore(request.paramAsDateTime(IssueFilterParameters.CREATED_BEFORE))
-        .ignorePaging(request.paramAsBoolean(IssueFilterParameters.IGNORE_PAGING));
+        .ignorePaging(request.paramAsBoolean(IssueFilterParameters.IGNORE_PAGING))
+        .facetMode(request.mandatoryParam(IssueFilterParameters.FACET_MODE));
 
       Set<String> allComponentUuids = Sets.newHashSet();
       boolean effectiveOnComponentOnly = mergeDeprecatedComponentParameters(session,
