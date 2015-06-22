@@ -20,7 +20,6 @@
 
 package org.sonar.server.measure.custom.ws;
 
-import java.util.Arrays;
 import java.util.List;
 import org.assertj.core.data.Offset;
 import org.junit.After;
@@ -49,17 +48,12 @@ import org.sonar.server.measure.custom.persistence.CustomMeasureDao;
 import org.sonar.server.metric.persistence.MetricDao;
 import org.sonar.server.metric.ws.MetricTesting;
 import org.sonar.server.tester.UserSessionRule;
-import org.sonar.server.util.BooleanTypeValidation;
-import org.sonar.server.util.FloatTypeValidation;
-import org.sonar.server.util.IntegerTypeValidation;
-import org.sonar.server.util.LongTypeValidation;
-import org.sonar.server.util.MetricLevelTypeValidation;
-import org.sonar.server.util.TypeValidations;
 import org.sonar.server.ws.WsTester;
 import org.sonar.test.DbTests;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Offset.offset;
+import static org.sonar.server.util.TypeValidationsTesting.newFullTypeValidations;
 
 @Category(DbTests.class)
 public class CreateActionTest {
@@ -81,9 +75,7 @@ public class CreateActionTest {
   public void setUp() {
     dbClient = new DbClient(db.database(), db.myBatis(), new CustomMeasureDao(), new MetricDao(), new ComponentDao());
     dbSession = dbClient.openSession(false);
-    TypeValidations typeValidations = new TypeValidations(Arrays.asList(new BooleanTypeValidation(), new IntegerTypeValidation(), new FloatTypeValidation(),
-      new MetricLevelTypeValidation(), new LongTypeValidation()));
-    ws = new WsTester(new CustomMeasuresWs(new CreateAction(dbClient, userSession, System2.INSTANCE, typeValidations, new CustomMeasureJsonWriter())));
+    ws = new WsTester(new CustomMeasuresWs(new CreateAction(dbClient, userSession, System2.INSTANCE, new CustomMeasureValidator(newFullTypeValidations()), new CustomMeasureJsonWriter())));
     db.truncateTables();
     userSession.setGlobalPermissions(GlobalPermissions.SYSTEM_ADMIN);
   }
@@ -186,7 +178,7 @@ public class CreateActionTest {
   }
 
   @Test
-  public void create_float_custom_measure_indb() throws Exception {
+  public void create_float_custom_measure_in_db() throws Exception {
     MetricDto metric = insertMetricAndProject(ValueType.FLOAT, DEFAULT_PROJECT_UUID);
 
     newRequest()

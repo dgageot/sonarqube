@@ -20,10 +20,7 @@
 
 package org.sonar.server.measure.custom.ws;
 
-import com.google.common.base.Joiner;
 import java.net.HttpURLConnection;
-import org.sonar.api.PropertyType;
-import org.sonar.api.measures.Metric;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService;
@@ -40,9 +37,9 @@ import org.sonar.server.db.DbClient;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.exceptions.ServerException;
 import org.sonar.server.user.UserSession;
-import org.sonar.server.util.TypeValidations;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.sonar.server.measure.custom.ws.CustomMeasureValueDescription.measureValueDescription;
 
 public class CreateAction implements CustomMeasuresWsAction {
   public static final String ACTION = "create";
@@ -53,27 +50,17 @@ public class CreateAction implements CustomMeasuresWsAction {
   public static final String PARAM_VALUE = "value";
   public static final String PARAM_DESCRIPTION = "description";
 
-  private static final String FIELD_ID = "id";
-  private static final String FIELD_PROJECT_ID = PARAM_PROJECT_ID;
-  private static final String FIELD_PROJECT_KEY = PARAM_PROJECT_KEY;
-  private static final String FIELD_VALUE = PARAM_VALUE;
-  private static final String FIELD_DESCRIPTION = PARAM_DESCRIPTION;
-  private static final String FIELD_METRIC = "metric";
-  private static final String FIELD_METRIC_KEY = "key";
-  private static final String FIELD_METRIC_ID = "id";
-  private static final String FIELD_METRIC_TYPE = "type";
-
   private final DbClient dbClient;
   private final UserSession userSession;
   private final System2 system;
-  private final TypeValidations typeValidations;
+  private final CustomMeasureValidator validator;
   private final CustomMeasureJsonWriter customMeasureJsonWriter;
 
-  public CreateAction(DbClient dbClient, UserSession userSession, System2 system, TypeValidations typeValidations, CustomMeasureJsonWriter customMeasureJsonWriter) {
+  public CreateAction(DbClient dbClient, UserSession userSession, System2 system, CustomMeasureValidator validator, CustomMeasureJsonWriter customMeasureJsonWriter) {
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.system = system;
-    this.typeValidations = typeValidations;
+    this.validator = validator;
     this.customMeasureJsonWriter = customMeasureJsonWriter;
   }
 
@@ -116,6 +103,7 @@ public class CreateAction implements CustomMeasuresWsAction {
   @Override
   public void handle(Request request, Response response) throws Exception {
     DbSession dbSession = dbClient.openSession(false);
+    String valueAsString = request.mandatoryParam(PARAM_VALUE);
     String description = request.param(PARAM_DESCRIPTION);
     long now = system.now();
 
@@ -130,12 +118,12 @@ public class CreateAction implements CustomMeasuresWsAction {
         .setMetricId(metric.getId())
         .setDescription(description)
         .setCreatedAt(now);
-      setMeasureValue(measure, request, metric);
+      validator.setMeasureValue(measure, valueAsString, metric);
       dbClient.customMeasureDao().insert(dbSession, measure);
       dbSession.commit();
 
       JsonWriter json = response.newJsonWriter();
-      writeMeasure(json, measure, component, metric, request.mandatoryParam(PARAM_VALUE));
+      writeMeasure(json, measure, component, metric, valueAsString);
       json.close();
     } finally {
       MyBatis.closeQuietly(dbSession);
@@ -160,67 +148,6 @@ public class CreateAction implements CustomMeasuresWsAction {
 
   private void writeMeasure(JsonWriter json, CustomMeasureDto measure, ComponentDto component, MetricDto metric, String measureWithoutInternalFormatting) {
     customMeasureJsonWriter.write(json, measure, metric, component);
-  }
-
-  private void setMeasureValue(CustomMeasureDto measure, Request request, MetricDto metric) {
-    String valueAsString = request.mandatoryParam(PARAM_VALUE);
-    Metric.ValueType metricType = Metric.ValueType.valueOf(metric.getValueType());
-    try {
-      switch (metricType) {
-        case BOOL:
-          checkAndSetBooleanMeasureValue(measure, valueAsString);
-          break;
-        case INT:
-        case MILLISEC:
-          checkAndSetIntegerMeasureValue(measure, valueAsString);
-          break;
-        case WORK_DUR:
-          checkAndSetWorkDurationMeasureValue(measure, valueAsString);
-          break;
-        case FLOAT:
-        case PERCENT:
-        case RATING:
-          checkAndSetFloatMeasureValue(measure, valueAsString);
-          break;
-        case LEVEL:
-          checkAndSetLevelMeasureValue(measure, valueAsString);
-          break;
-        case STRING:
-        case DATA:
-        case DISTRIB:
-          measure.setTextValue(valueAsString);
-          break;
-        default:
-          throw new IllegalArgumentException("Unsupported metric type:" + metricType.description());
-      }
-    } catch (Exception e) {
-      throw new IllegalArgumentException(String.format("Ill formatted value '%s' for metric type '%s'", valueAsString, metricType.description()), e);
-    }
-  }
-
-  private void checkAndSetLevelMeasureValue(CustomMeasureDto measure, String valueAsString) {
-    typeValidations.validate(valueAsString, PropertyType.METRIC_LEVEL.name(), null);
-    measure.setTextValue(valueAsString);
-  }
-
-  private void checkAndSetFloatMeasureValue(CustomMeasureDto measure, String valueAsString) {
-    typeValidations.validate(valueAsString, PropertyType.FLOAT.name(), null);
-    measure.setValue(Double.parseDouble(valueAsString));
-  }
-
-  private void checkAndSetWorkDurationMeasureValue(CustomMeasureDto measure, String valueAsString) {
-    typeValidations.validate(valueAsString, PropertyType.LONG.name(), null);
-    measure.setValue(Long.parseLong(valueAsString));
-  }
-
-  private void checkAndSetIntegerMeasureValue(CustomMeasureDto measure, String valueAsString) {
-    typeValidations.validate(valueAsString, PropertyType.INTEGER.name(), null);
-    measure.setValue(Integer.parseInt(valueAsString));
-  }
-
-  private void checkAndSetBooleanMeasureValue(CustomMeasureDto measure, String valueAsString) {
-    typeValidations.validate(valueAsString, PropertyType.BOOLEAN.name(), null);
-    measure.setValue(Boolean.parseBoolean(valueAsString) ? 1.0d : 0.0d);
   }
 
   private MetricDto searchMetric(DbSession dbSession, Request request) {
@@ -255,46 +182,5 @@ public class CreateAction implements CustomMeasuresWsAction {
     }
 
     return project;
-  }
-
-  private static String measureValueDescription() {
-    StringBuilder description = new StringBuilder("Measure value. Value type depends on metric type:");
-    description.append("<ul>");
-    for (Metric.ValueType metricType : Metric.ValueType.values()) {
-      description.append("<li>");
-      description.append(String.format("%s - %s", metricType.description(), metricTypeWsDescription(metricType)));
-      description.append("</li>");
-    }
-    description.append("</ul>");
-
-    return description.toString();
-  }
-
-  private static String metricTypeWsDescription(Metric.ValueType metricType) {
-    switch (metricType) {
-      case BOOL:
-        return "the possible values are true or false";
-      case INT:
-      case MILLISEC:
-        return "type: integer";
-      case FLOAT:
-      case PERCENT:
-      case RATING:
-        return "type: double";
-      case LEVEL:
-        return "the possible values are " + formattedMetricLevelNames();
-      case STRING:
-      case DATA:
-      case DISTRIB:
-        return "type: string";
-      case WORK_DUR:
-        return "long representing the number of minutes";
-      default:
-        return "metric type not supported";
-    }
-  }
-
-  private static String formattedMetricLevelNames() {
-    return Joiner.on(", ").join(Metric.Level.names());
   }
 }
