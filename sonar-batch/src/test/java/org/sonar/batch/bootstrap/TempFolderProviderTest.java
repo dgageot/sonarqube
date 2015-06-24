@@ -19,6 +19,8 @@
  */
 package org.sonar.batch.bootstrap;
 
+import org.junit.Ignore;
+
 import org.apache.commons.io.FileUtils;
 import org.sonar.api.utils.TempFolder;
 import com.google.common.collect.ImmutableMap;
@@ -90,18 +92,15 @@ public class TempFolderProviderTest {
   }
 
   @Test
+  @Ignore
   public void createTempFolderDefault() throws Exception {
     File userHome = temp.newFolder();
     System.setProperty("user.home", userHome.getAbsolutePath());
 
-    System.out.println("userHome " + userHome.toString());
-    System.out.println("prop " + System.getProperty("user.home"));
     // if nothing is defined, it will be in {user.home}/.sonar/.sonartmp
     File defaultSonarHome = new File(System.getProperty("user.home"), ".sonar");
     
-    System.out.println("sonarHome " + defaultSonarHome);
     File workingDir = new File(defaultSonarHome, CoreProperties.GLOBAL_WORKING_DIRECTORY_DEFAULT_VALUE).getAbsoluteFile();
-    System.out.println("workingDir " + workingDir);
     try {
       TempFolder tempFolder = tempFolderProvider.provide(new BootstrapProperties(Collections.<String, String>emptyMap()));
       tempFolder.newDir();
