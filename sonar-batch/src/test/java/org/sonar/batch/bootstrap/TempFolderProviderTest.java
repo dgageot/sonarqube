@@ -45,19 +45,21 @@ public class TempFolderProviderTest {
 
   @Test
   public void createTempFolderProps() throws Exception {
-    File workingDir = temp.getRoot();
+    File workingDir = temp.newFolder();
 
     TempFolder tempFolder = tempFolderProvider.provide(new BootstrapProperties(ImmutableMap.of(CoreProperties.GLOBAL_WORKING_DIRECTORY, workingDir.getAbsolutePath())));
     tempFolder.newDir();
     tempFolder.newFile();
     assertThat(getCreatedTempDir(workingDir)).exists();
     assertThat(getCreatedTempDir(workingDir).list()).hasSize(2);
+    
+    FileUtils.deleteQuietly(workingDir);
   }
 
   @Test
   public void cleanUpOld() throws IOException {
     long creationTime = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(100);
-    File workingDir = temp.getRoot();
+    File workingDir = temp.newFolder();
 
     for (int i = 0; i < 3; i++) {
       File tmp = new File(workingDir, ".sonartmp_" + i);
@@ -68,24 +70,28 @@ public class TempFolderProviderTest {
     tempFolderProvider.provide(new BootstrapProperties(ImmutableMap.of(CoreProperties.GLOBAL_WORKING_DIRECTORY, workingDir.getAbsolutePath())));
     // this also checks that all other temps were deleted
     assertThat(getCreatedTempDir(workingDir)).exists();
+    
+    FileUtils.deleteQuietly(workingDir);
   }
 
   @Test
   public void createTempFolderSonarHome() throws Exception {
     // with sonar home, it will be in {sonar.home}/.sonartmp
-    File sonarHome = temp.getRoot();
-    File workingDir = new File(sonarHome, CoreProperties.GLOBAL_WORKING_DIRECTORY_DEFAULT_VALUE);
+    File sonarHome = temp.newFolder();
+    File workingDir = new File(sonarHome, CoreProperties.GLOBAL_WORKING_DIRECTORY_DEFAULT_VALUE).getAbsoluteFile();
 
     TempFolder tempFolder = tempFolderProvider.provide(new BootstrapProperties(ImmutableMap.of("sonar.userHome", sonarHome.getAbsolutePath())));
     tempFolder.newDir();
     tempFolder.newFile();
     assertThat(getCreatedTempDir(workingDir)).exists();
     assertThat(getCreatedTempDir(workingDir).list()).hasSize(2);
+    
+    FileUtils.deleteQuietly(sonarHome);
   }
 
   @Test
   public void createTempFolderDefault() throws Exception {
-    File userHome = temp.getRoot();
+    File userHome = temp.newFolder();
     System.setProperty("user.home", userHome.getAbsolutePath());
 
     // if nothing is defined, it will be in {user.home}/.sonar/.sonartmp
@@ -99,7 +105,7 @@ public class TempFolderProviderTest {
       assertThat(getCreatedTempDir(workingDir)).exists();
       assertThat(getCreatedTempDir(workingDir).list()).hasSize(2);
     } finally {
-      FileUtils.deleteDirectory(getCreatedTempDir(workingDir));
+      FileUtils.deleteQuietly(workingDir);
     }
   }
 
