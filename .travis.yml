@@ -4,6 +4,7 @@ services: docker
 
 install: docker build -t travis/ci .
 script:
+  - docker images
   - docker pull quay.io/travisci/travis-jvm
   - docker run -it travis/ci mvn verify -T2 -Dgrunt.arguments=maven-quick-build
 
