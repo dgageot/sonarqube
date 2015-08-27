@@ -2,9 +2,9 @@ language: bash
 sudo: required
 services: docker
 
-install: 
+install:
   - docker images -a
-	- docker build -t travis/ci .
+  - docker build -t travis/ci .
   - docker images -a
   - docker run -it travis/ci mvn verify -T2 -Dgrunt.arguments=maven-quick-build
 
