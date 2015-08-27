@@ -3,8 +3,8 @@ sudo: required
 services: docker
 
 install: docker build -t travis/ci .
-#script: docker run -it travis/ci mvn verify -T2 -Dgrunt.arguments=maven-quick-build
-script: docker run -it travis/ci mvn verify -T2
+script: docker run -it travis/ci mvn verify -T2 -Dgrunt.arguments=maven-quick-build
+#script: docker run -it travis/ci mvn verify -T2
 
 notifications:
   email: false
