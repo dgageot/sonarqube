@@ -4,7 +4,7 @@ services: docker
 
 script:
   - docker build -t travis/ci .
-  - docker run -it -e JOB=H2 -v $HOME/.m2/:/root/.m2/ travis/ci ./travis.sh
+  - docker run -it -v $HOME/.m2/:/root/.m2/ travis/ci mvn verify -T2
 
 notifications:
   email: false
