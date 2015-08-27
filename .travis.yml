@@ -2,9 +2,8 @@ language: bash
 sudo: required
 services: docker
 
-script:
-  - docker build -t travis/ci .
-  - docker run -it -v $HOME/.m2/:/root/.m2/ travis/ci mvn verify -T2 -DforkCount=2
+install: docker build -t travis/ci .
+script: docker run -it -v $HOME/.m2/:/root/.m2/ travis/ci mvn verify -T2 -DforkCount=2
 
 notifications:
   email: false
