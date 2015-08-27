@@ -1,18 +1,10 @@
 language: bash
 sudo: required
-services:
-  - docker
+services: docker
 
 script:
   - docker build -t travis/ci .
-  - docker run --rm -it -e JOB=H2 -v $HOME/.m2/:/root/.m2/ travis/ci ./travis.sh
-
-cache:
-  directories:
-    - '$HOME/.m2/repository'
-
-before_cache:
-  - 'rm -rf $HOME/.m2/repository/org/codehaus/sonar'
+  - docker run -it -e JOB=H2 -v $HOME/.m2/:/root/.m2/ travis/ci ./travis.sh
 
 notifications:
   email: false
