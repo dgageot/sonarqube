@@ -1,1 +1,1 @@
-FROM dgageot/travis-docker
+FROM dgageot/travis-docker2
