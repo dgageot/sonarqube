@@ -1,35 +1,18 @@
-language: java
-sudo: false
-install: true
-jdk: oraclejdk7
-script: ./travis.sh
+language: bash
+sudo: required
+services:
+  - docker
 
-env:
-  - JOB=H2
-  - JOB=POSTGRES
-  - JOB=MYSQL
-  - JOB=WEB
-  - JOB=ITS IT_CATEGORY=issue
-  - JOB=ITS IT_CATEGORY=analysis
-  - JOB=ITS IT_CATEGORY=administration
-  - JOB=ITS IT_CATEGORY=batch
-  - JOB=ITS IT_CATEGORY=server
-  - JOB=ITS IT_CATEGORY=plugins
-  - JOB=ITS IT_CATEGORY=qualitygate
-  - JOB=ITS IT_CATEGORY=updatecenter
-
-matrix:
-  fast_finish: true
+script:
+  - docker build -t travis/ci .
+  - docker run --rm -it -e JOB=H2 -v $HOME/.m2/:/root/.m2/ travis/ci ./travis.sh
 
 cache:
   directories:
     - '$HOME/.m2/repository'
-    - 'server/sonar-web/node'
-    - 'server/sonar-web/node_modules'
 
 before_cache:
   - 'rm -rf $HOME/.m2/repository/org/codehaus/sonar'
-  - 'rm -f server/sonar-web/npm-debug.log'
 
 notifications:
   email: false

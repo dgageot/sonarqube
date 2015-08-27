@@ -1,0 +1,1 @@
+FROM dgageot/travis-docker
